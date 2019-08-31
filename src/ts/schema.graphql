@@ -1,0 +1,19 @@
+type Query {
+  version: String!
+}
+
+type Mutation {
+  placeOrder(order: Order!): PlaceOrderResponse!
+}
+
+type PlaceOrderResponse {
+  success: Boolean!
+}
+
+input Order {
+  orderId: String!
+  customerInfo: String!
+  shippingAddress: String!
+  billingAddress: String!
+  orderLine: [String!]!
+}
