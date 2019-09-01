@@ -11,6 +11,34 @@ export type Scalars = {
   Float: number,
 };
 
+export type Address = {
+  line1: Scalars['String'],
+  line2: Scalars['String'],
+  line3: Scalars['String'],
+  line4: Scalars['String'],
+  city: Scalars['String'],
+  zipCode: Scalars['String'],
+};
+
+export type CustomerInfo = {
+  firstName: Scalars['String'],
+  lastName: Scalars['String'],
+  emailAddress: Scalars['String'],
+};
+
+export type Error = {
+   __typename?: 'Error',
+  error: Scalars['String'],
+  reason: Scalars['String'],
+};
+
+export type Event = {
+   __typename?: 'Event',
+  event: Scalars['String'],
+  timeStamp: Scalars['Float'],
+  data: Scalars['String'],
+};
+
 export type Mutation = {
    __typename?: 'Mutation',
   placeOrder: PlaceOrderResponse,
@@ -23,15 +51,24 @@ export type MutationPlaceOrderArgs = {
 
 export type Order = {
   orderId: Scalars['String'],
-  customerInfo: Scalars['String'],
-  shippingAddress: Scalars['String'],
-  billingAddress: Scalars['String'],
-  orderLine: Array<Scalars['String']>,
+  customerInfo: CustomerInfo,
+  shippingAddress: Address,
+  billingAddress: Address,
+  lines: Array<OrderLine>,
+};
+
+export type OrderLine = {
+  orderLineId: Scalars['String'],
+  productCode: Scalars['String'],
+  quantity: Scalars['Float'],
 };
 
 export type PlaceOrderResponse = {
    __typename?: 'PlaceOrderResponse',
+  orderId: Scalars['String'],
   success: Scalars['Boolean'],
+  events?: Maybe<Array<Event>>,
+  error?: Maybe<Error>,
 };
 
 export type Query = {
@@ -113,8 +150,14 @@ export type ResolversTypes = {
   String: ResolverTypeWrapper<Scalars['String']>,
   Mutation: ResolverTypeWrapper<{}>,
   Order: Order,
+  CustomerInfo: CustomerInfo,
+  Address: Address,
+  OrderLine: OrderLine,
+  Float: ResolverTypeWrapper<Scalars['Float']>,
   PlaceOrderResponse: ResolverTypeWrapper<PlaceOrderResponse>,
   Boolean: ResolverTypeWrapper<Scalars['Boolean']>,
+  Event: ResolverTypeWrapper<Event>,
+  Error: ResolverTypeWrapper<Error>,
 };
 
 /** Mapping between all available schema types and the resolvers parents */
@@ -123,8 +166,25 @@ export type ResolversParentTypes = {
   String: Scalars['String'],
   Mutation: {},
   Order: Order,
+  CustomerInfo: CustomerInfo,
+  Address: Address,
+  OrderLine: OrderLine,
+  Float: Scalars['Float'],
   PlaceOrderResponse: PlaceOrderResponse,
   Boolean: Scalars['Boolean'],
+  Event: Event,
+  Error: Error,
+};
+
+export type ErrorResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Error'] = ResolversParentTypes['Error']> = {
+  error?: Resolver<ResolversTypes['String'], ParentType, ContextType>,
+  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>,
+};
+
+export type EventResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Event'] = ResolversParentTypes['Event']> = {
+  event?: Resolver<ResolversTypes['String'], ParentType, ContextType>,
+  timeStamp?: Resolver<ResolversTypes['Float'], ParentType, ContextType>,
+  data?: Resolver<ResolversTypes['String'], ParentType, ContextType>,
 };
 
 export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
@@ -132,7 +192,10 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
 };
 
 export type PlaceOrderResponseResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PlaceOrderResponse'] = ResolversParentTypes['PlaceOrderResponse']> = {
+  orderId?: Resolver<ResolversTypes['String'], ParentType, ContextType>,
   success?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>,
+  events?: Resolver<Maybe<Array<ResolversTypes['Event']>>, ParentType, ContextType>,
+  error?: Resolver<Maybe<ResolversTypes['Error']>, ParentType, ContextType>,
 };
 
 export type QueryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
@@ -140,6 +203,8 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
 };
 
 export type Resolvers<ContextType = Context> = {
+  Error?: ErrorResolvers<ContextType>,
+  Event?: EventResolvers<ContextType>,
   Mutation?: MutationResolvers<ContextType>,
   PlaceOrderResponse?: PlaceOrderResponseResolvers<ContextType>,
   Query?: QueryResolvers<ContextType>,

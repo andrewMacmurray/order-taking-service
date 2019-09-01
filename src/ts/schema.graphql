@@ -7,13 +7,48 @@ type Mutation {
 }
 
 type PlaceOrderResponse {
+  orderId: String!
   success: Boolean!
+  events: [Event!]
+  error: Error
+}
+
+type Event {
+  event: String!
+  timeStamp: Float!
+  data: String!
+}
+
+type Error {
+  error: String!
+  reason: String!
 }
 
 input Order {
   orderId: String!
-  customerInfo: String!
-  shippingAddress: String!
-  billingAddress: String!
-  orderLine: [String!]!
+  customerInfo: CustomerInfo!
+  shippingAddress: Address!
+  billingAddress: Address!
+  lines: [OrderLine!]!
+}
+
+input CustomerInfo {
+  firstName: String!
+  lastName: String!
+  emailAddress: String!
+}
+
+input Address {
+  line1: String!
+  line2: String!
+  line3: String!
+  line4: String!
+  city: String!
+  zipCode: String!
+}
+
+input OrderLine {
+  orderLineId: String!
+  productCode: String!
+  quantity: Float!
 }

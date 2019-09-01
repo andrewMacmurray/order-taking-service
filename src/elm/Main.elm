@@ -1,7 +1,9 @@
 module Main exposing (main)
 
-import OrderTaking exposing (UnvalidatedOrder)
-import OrderTaking.Events
+import OrderTaking.Context
+import OrderTaking.Service as Service
+import OrderTaking.Types.Domain exposing (PlaceOrderError, PlaceOrderEvent, UnvalidatedOrder)
+import OrderTaking.Workflow
 
 
 
@@ -26,7 +28,7 @@ type alias Model =
 
 
 type Msg
-    = PlaceOrder UnvalidatedOrder
+    = OrderPlaced UnvalidatedOrder
 
 
 
@@ -45,13 +47,23 @@ init _ =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        PlaceOrder order ->
+        OrderPlaced order ->
             ( model, processOrder order )
 
 
 processOrder : UnvalidatedOrder -> Cmd msg
 processOrder =
-    OrderTaking.placeOrder >> OrderTaking.Events.onOrderResult
+    placeOrder >> OrderTaking.Context.orderProcessed
+
+
+placeOrder : UnvalidatedOrder -> Result PlaceOrderError (List PlaceOrderEvent)
+placeOrder =
+    OrderTaking.Workflow.placeOrder
+        Service.checkProductCodeExists
+        Service.checkAddressExists
+        Service.getProductPrice
+        Service.createOrderAcknowledgementLetter
+        Service.sendOrderAcknowledgement
 
 
 
@@ -60,4 +72,4 @@ processOrder =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    OrderTaking.Events.orderReceived PlaceOrder
+    OrderTaking.Context.orderPlaced OrderPlaced

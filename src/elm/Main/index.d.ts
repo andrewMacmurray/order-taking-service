@@ -6,14 +6,14 @@ export namespace Elm {
   namespace Main {
     export interface App {
       ports: {
-        orderReceived: {
-          send(data: { orderId: string; customerInfo: string; shippingAddress: string; billingAddress: string; orderLine: string[] }): void
+        orderPlaced: {
+          send(data: { orderId: string; customerInfo: { firstName: string; lastName: string; emailAddress: string }; shippingAddress: { line1: string; line2: string; line3: string; line4: string; city: string; zipCode: string }; billingAddress: { line1: string; line2: string; line3: string; line4: string; city: string; zipCode: string }; lines: { orderLineId: string; productCode: string; quantity: number }[] }): void
         }
-        orderProcessed: {
-          subscribe(callback: (data: { acknowledgementSent: boolean; orderPlaced: boolean; billableOrderPlaced: boolean }) => void): void
+        orderSucceeded: {
+          subscribe(callback: (data: { event: string; timeStamp: number; data: string }[]) => void): void
         }
         orderFailed: {
-          subscribe(callback: (data: { field: string; errorDescription: string }[]) => void): void
+          subscribe(callback: (data: { error: string; reason: string }) => void): void
         }
       };
     }
