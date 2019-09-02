@@ -1,12 +1,12 @@
 import { ApolloServer } from "apollo-server";
 import * as typeDefs from "./schema.graphql";
 import { resolvers } from "./resolvers";
-import { Elm } from "../elm/Main";
+import { context } from "./context";
 
 const server = new ApolloServer({
   typeDefs,
   resolvers,
-  context: Elm.Main.init({ flags: null })
+  context
 });
 
 server.listen().then(({ url }) => {

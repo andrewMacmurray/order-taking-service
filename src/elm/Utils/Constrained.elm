@@ -1,7 +1,6 @@
 module Utils.Constrained exposing
     ( decimal
     , integer
-    , maybeString
     , string
     , stringLike
     )
@@ -19,18 +18,6 @@ string fieldName constructor maxLen str =
 
     else
         Ok <| constructor str
-
-
-maybeString : String -> (String -> a) -> Int -> String -> Result String (Maybe a)
-maybeString fieldName constructor maxLen str =
-    if String.isEmpty str then
-        Ok Nothing
-
-    else if String.length str > maxLen then
-        aboveMaxLength fieldName <| String.fromInt maxLen
-
-    else
-        Ok <| Just <| constructor str
 
 
 integer : String -> (Int -> a) -> Int -> Int -> Int -> Result String a

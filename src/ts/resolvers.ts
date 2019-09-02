@@ -1,15 +1,16 @@
 import { Resolvers, MutationResolvers } from "./generated/types";
 
-const placeOrder: MutationResolvers["placeOrder"] = (_, args, context) => {
-  const { orderId } = args.order
+const placeOrder: MutationResolvers["placeOrder"] = (_, { order }, context) => {
+  const { orderId } = order;
+  const worker = context.worker();
   return new Promise(resolve => {
-    context.ports.orderSucceeded.subscribe(events => {
-      resolve({ success: true, orderId, events });
-    });
-    context.ports.orderFailed.subscribe(error => {
-      resolve({ success: false, orderId, error });
-    });
-    context.ports.orderPlaced.send(args.order);
+    worker.orderSucceeded.subscribe(events =>
+      resolve({ success: true, orderId, events })
+    );
+    worker.orderFailed.subscribe(error =>
+      resolve({ success: false, orderId, error })
+    );
+    worker.orderPlaced.send(order);
   });
 };
 
