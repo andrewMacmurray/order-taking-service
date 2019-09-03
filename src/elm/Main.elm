@@ -63,12 +63,7 @@ processOrder =
 
 placeOrder : UnvalidatedOrder -> Task PlaceOrderError (List PlaceOrderEvent)
 placeOrder =
-    OrderTaking.Workflow.placeOrder
-        Service.checkProductCodeExists
-        Service.checkAddressExists
-        Service.getProductPrice
-        Service.createOrderAcknowledgementLetter
-        Service.sendOrderAcknowledgement
+    OrderTaking.Workflow.placeOrder Service.service
 
 
 

@@ -8,6 +8,7 @@ module OrderTaking.Workflow exposing
     , HtmlString(..)
     , SendOrderAcknowledgment
     , SendResult(..)
+    , Service
     , placeOrder
     )
 
@@ -65,8 +66,7 @@ type CheckedAddress
 
 
 type alias CheckAddressExists =
-    UnvalidatedAddress
-    -> Task AddressValidationError CheckedAddress -- (Async)
+    UnvalidatedAddress -> Task AddressValidationError CheckedAddress
 
 
 
@@ -90,10 +90,7 @@ type alias ValidatedOrder =
 
 
 type alias ValidateOrder =
-    CheckProductCodeExists -- dependency
-    -> CheckAddressExists -- dependency (Async)
-    -> UnvalidatedOrder -- input
-    -> Task ValidationError ValidatedOrder -- (Async) output
+    UnvalidatedOrder -> Task ValidationError ValidatedOrder
 
 
 
@@ -105,9 +102,7 @@ type alias GetProductPrice =
 
 
 type alias PriceOrder =
-    GetProductPrice -- dependency
-    -> ValidatedOrder -- input
-    -> Result PricingError PricedOrder -- output
+    ValidatedOrder -> Result PricingError PricedOrder
 
 
 
@@ -138,10 +133,7 @@ type alias SendOrderAcknowledgment =
 
 
 type alias AcknowledgeOrder =
-    CreateOrderAcknowledgmentLetter -- dependency
-    -> SendOrderAcknowledgment -- dependency
-    -> PricedOrder -- input
-    -> Maybe OrderAcknowledgmentSent -- output
+    PricedOrder -> Maybe OrderAcknowledgmentSent
 
 
 
@@ -149,13 +141,40 @@ type alias AcknowledgeOrder =
 
 
 type alias CreateEvents =
-    PricedOrder -- input
-    -> Maybe OrderAcknowledgmentSent -- input (event from previous step)
-    -> List PlaceOrderEvent -- output
+    PricedOrder
+    -> Maybe OrderAcknowledgmentSent
+    -> List PlaceOrderEvent
 
 
 
 -- Validate Order
+
+
+validateOrder : CheckAddressExists -> CheckProductCodeExists -> ValidateOrder
+validateOrder checkAddressExists checkProductCodeExists input =
+    let
+        validateAddress =
+            toCheckedAddress checkAddressExists
+                >> Task.andThen toAddress
+
+        orderLines =
+            input.lines
+                |> List.map (toValidatedOrderLine checkProductCodeExists)
+                |> Result.combine
+
+        toValidatedOrder shipping billing =
+            apply ValidatedOrder
+                |> withField (Simple.toOrderId input.orderId)
+                |> withNested (toCustomerInfo input.customerInfo)
+                |> withNested (Ok shipping)
+                |> withNested (Ok billing)
+                |> withNested orderLines
+                |> Result.toTask
+    in
+    Task.andThen2
+        toValidatedOrder
+        (validateAddress input.shippingAddress)
+        (validateAddress input.billingAddress)
 
 
 toCustomerInfo : UnvalidatedCustomerInfo -> Result ValidationError CustomerInfo
@@ -171,7 +190,7 @@ toCustomerInfo info =
         |> withField (toEmailAddress info.emailAddress)
 
 
-toAddress : CheckedAddress -> Result ValidationError Address
+toAddress : CheckedAddress -> Task ValidationError Address
 toAddress (CheckedAddress address) =
     apply Address
         |> withString50 address.line1
@@ -180,20 +199,17 @@ toAddress (CheckedAddress address) =
         |> withString50 address.line4
         |> withString50 address.city
         |> withField (toZipCode address.zipCode)
+        |> Result.toTask
 
 
 toCheckedAddress : CheckAddressExists -> UnvalidatedAddress -> Task ValidationError CheckedAddress
-toCheckedAddress checkExists address =
-    address
-        |> checkExists
-        |> Task.mapError toAddressError
+toCheckedAddress checkAddressExists =
+    checkAddressExists >> Task.mapError toAddressError
 
 
 toProductCode : CheckProductCodeExists -> String -> Result String ProductCode
-toProductCode checkExists productCode =
-    productCode
-        |> Simple.toProductCode
-        |> Result.andThen (mapProductCheck checkExists)
+toProductCode checkProductCodeExists =
+    Simple.toProductCode >> Result.andThen (mapProductCheck checkProductCodeExists)
 
 
 toValidatedOrderLine : CheckProductCodeExists -> UnvalidatedOrderLine -> Result ValidationError ValidatedOrderLine
@@ -214,47 +230,30 @@ toValidatedOrderLine checkProductExists line =
         |> withField quantity
 
 
-validateOrder : ValidateOrder
-validateOrder checkCodeExists checkAddressExists input =
-    let
-        orderId =
-            Simple.toOrderId input.orderId
-
-        customerInfo =
-            toCustomerInfo input.customerInfo
-
-        shippingAddress =
-            input.shippingAddress
-                |> toCheckedAddress checkAddressExists
-                |> Task.andThen (toAddress >> Result.toTask)
-
-        billingAddress =
-            input.billingAddress
-                |> toCheckedAddress checkAddressExists
-                |> Task.andThen (toAddress >> Result.toTask)
-
-        orderLines =
-            input.lines
-                |> List.map (toValidatedOrderLine checkCodeExists)
-                |> Result.combine
-
-        toValidatedOrder shipping billing =
-            apply ValidatedOrder
-                |> withField orderId
-                |> withNested customerInfo
-                |> withNested (Ok shipping)
-                |> withNested (Ok billing)
-                |> withNested orderLines
-                |> Result.toTask
-    in
-    Task.andThen2
-        toValidatedOrder
-        shippingAddress
-        billingAddress
-
-
 
 -- Pricing
+
+
+priceOrder : GetProductPrice -> PriceOrder
+priceOrder getProductPrice order =
+    let
+        lines =
+            order.lines
+                |> List.map (toPricedOrderLine getProductPrice)
+                |> Result.combine
+
+        amountToBill =
+            lines
+                |> Result.map (List.map .linePrice)
+                |> Result.andThen (Simple.billingTotal >> Result.mapError PricingError)
+
+        toPricedOrder =
+            PricedOrder order.orderId
+                order.customerInfo
+                order.shippingAddress
+                order.billingAddress
+    in
+    Result.map2 toPricedOrder amountToBill lines
 
 
 toPricedOrderLine : GetProductPrice -> ValidatedOrderLine -> Result PricingError PricedOrderLine
@@ -273,41 +272,19 @@ toPricedOrderLine getProductPrice line =
     Result.map toPricedOrderLine_ linePrice
 
 
-priceOrder : PriceOrder
-priceOrder getProductPrice order =
-    let
-        lines =
-            order.lines
-                |> List.map (toPricedOrderLine getProductPrice)
-                |> Result.combine
-
-        amountToBill =
-            lines
-                |> Result.map (List.map .linePrice)
-                |> Result.andThen (Simple.billingTotal >> Result.mapError PricingError)
-
-        toPricedOrder_ =
-            PricedOrder order.orderId
-                order.customerInfo
-                order.shippingAddress
-                order.billingAddress
-    in
-    Result.map2 toPricedOrder_ amountToBill lines
-
-
 
 -- Acknowledge Order
 
 
-acknowledgeOrder : AcknowledgeOrder
-acknowledgeOrder createLetter sendAcknowledgement pricedOrder =
+acknowledgeOrder : CreateOrderAcknowledgmentLetter -> SendOrderAcknowledgment -> AcknowledgeOrder
+acknowledgeOrder createOrderAcknowledgementLetter sendOrderAcknowledgement pricedOrder =
     let
         acknowledgement =
             OrderAcknowledgment
                 pricedOrder.customerInfo.emailAddress
-                (createLetter pricedOrder)
+                (createOrderAcknowledgementLetter pricedOrder)
     in
-    case sendAcknowledgement acknowledgement of
+    case sendOrderAcknowledgement acknowledgement of
         Sent ->
             Just <| OrderAcknowledgmentSent pricedOrder.orderId pricedOrder.customerInfo.emailAddress
 
@@ -317,24 +294,6 @@ acknowledgeOrder createLetter sendAcknowledgement pricedOrder =
 
 
 -- Create Events
-
-
-createBillingEvent : PricedOrder -> Maybe BillableOrderPlacedDetails
-createBillingEvent placedOrder =
-    if Simple.billingAmount placedOrder.amountToBill > 0 then
-        Just <|
-            BillableOrderPlacedDetails
-                placedOrder.orderId
-                placedOrder.billingAddress
-                placedOrder.amountToBill
-
-    else
-        Nothing
-
-
-maybeToList : Maybe a -> List a
-maybeToList =
-    Maybe.map List.singleton >> Maybe.withDefault []
 
 
 createEvents : CreateEvents
@@ -363,33 +322,60 @@ createEvents pricedOrder maybeAcknowledgementSent =
         ]
 
 
+createBillingEvent : PricedOrder -> Maybe BillableOrderPlacedDetails
+createBillingEvent placedOrder =
+    if Simple.billingAmount placedOrder.amountToBill > 0 then
+        Just <|
+            BillableOrderPlacedDetails
+                placedOrder.orderId
+                placedOrder.billingAddress
+                placedOrder.amountToBill
+
+    else
+        Nothing
+
+
+maybeToList : Maybe a -> List a
+maybeToList =
+    Maybe.map List.singleton >> Maybe.withDefault []
+
+
 
 -- Place Order Workflow
 
 
-placeOrder :
-    CheckProductCodeExists
-    -> CheckAddressExists
-    -> GetProductPrice
-    -> CreateOrderAcknowledgmentLetter
-    -> SendOrderAcknowledgment
-    -> PlaceOrder
-placeOrder checkProduct checkAddress getPrice createLetter sendAcknowledgement unvalidatedOrder =
-    let
-        validatedOrder =
-            validateOrder checkProduct checkAddress unvalidatedOrder
-                |> Task.mapError Validation
+type alias Service =
+    { checkProductCodeExists : CheckProductCodeExists
+    , checkAddressExists : CheckAddressExists
+    , getProductPrice : GetProductPrice
+    , createOrderAcknowledgementLetter : CreateOrderAcknowledgmentLetter
+    , sendOrderAcknowledgement : SendOrderAcknowledgment
+    }
 
-        pricedOrder =
-            validatedOrder
-                |> Task.andThen (priceOrder getPrice >> Result.toTask >> Task.mapError Pricing)
 
-        toEvents order =
-            order
-                |> acknowledgeOrder createLetter sendAcknowledgement
-                |> createEvents order
-    in
-    Task.map toEvents pricedOrder
+placeOrder : Service -> PlaceOrder
+placeOrder service unvalidatedOrder =
+    unvalidatedOrder
+        |> validateOrder service.checkAddressExists service.checkProductCodeExists
+        |> Task.mapError Validation
+        |> getPricedOrder service.getProductPrice
+        |> Task.map (getEvents service)
+
+
+getEvents : Service -> PricedOrder -> List PlaceOrderEvent
+getEvents service order =
+    order
+        |> acknowledgeOrder service.createOrderAcknowledgementLetter service.sendOrderAcknowledgement
+        |> createEvents order
+
+
+getPricedOrder : GetProductPrice -> Task PlaceOrderError ValidatedOrder -> Task PlaceOrderError PricedOrder
+getPricedOrder getProductPrice =
+    Task.andThen
+        (priceOrder getProductPrice
+            >> Result.toTask
+            >> Task.mapError Pricing
+        )
 
 
 
