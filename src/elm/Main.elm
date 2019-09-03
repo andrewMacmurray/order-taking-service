@@ -4,6 +4,7 @@ import OrderTaking.Context
 import OrderTaking.Service as Service
 import OrderTaking.Types.Domain exposing (PlaceOrderError, PlaceOrderEvent, UnvalidatedOrder)
 import OrderTaking.Workflow
+import Task exposing (Task)
 
 
 
@@ -29,6 +30,7 @@ type alias Model =
 
 type Msg
     = OrderPlaced UnvalidatedOrder
+    | OrderProcessed (Result PlaceOrderError (List PlaceOrderEvent))
 
 
 
@@ -50,13 +52,16 @@ update msg model =
         OrderPlaced order ->
             ( model, processOrder order )
 
+        OrderProcessed result ->
+            ( model, OrderTaking.Context.orderProcessed result )
+
 
 processOrder : UnvalidatedOrder -> Cmd msg
 processOrder =
-    placeOrder >> OrderTaking.Context.orderProcessed
+    placeOrder >> Task.attempt OrderProcessed
 
 
-placeOrder : UnvalidatedOrder -> Result PlaceOrderError (List PlaceOrderEvent)
+placeOrder : UnvalidatedOrder -> Task PlaceOrderError (List PlaceOrderEvent)
 placeOrder =
     OrderTaking.Workflow.placeOrder
         Service.checkProductCodeExists

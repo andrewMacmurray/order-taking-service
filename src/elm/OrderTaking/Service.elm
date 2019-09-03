@@ -18,6 +18,7 @@ import OrderTaking.Workflow
         , SendOrderAcknowledgment
         , SendResult(..)
         )
+import Task
 
 
 
@@ -31,7 +32,7 @@ checkProductCodeExists code =
 
 checkAddressExists : CheckAddressExists
 checkAddressExists unvalidatedAddress =
-    Ok <| CheckedAddress unvalidatedAddress
+    Task.succeed <| CheckedAddress unvalidatedAddress
 
 
 getProductPrice : GetProductPrice

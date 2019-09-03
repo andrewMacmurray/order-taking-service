@@ -42,7 +42,9 @@ import OrderTaking.Types.Simple as Simple
         , toString50
         , toZipCode
         )
-import Utils.Result
+import Task exposing (Task)
+import Utils.Result as Result
+import Utils.Task as Task
 
 
 
@@ -64,7 +66,7 @@ type CheckedAddress
 
 type alias CheckAddressExists =
     UnvalidatedAddress
-    -> Result AddressValidationError CheckedAddress -- (Async)
+    -> Task AddressValidationError CheckedAddress -- (Async)
 
 
 
@@ -91,7 +93,7 @@ type alias ValidateOrder =
     CheckProductCodeExists -- dependency
     -> CheckAddressExists -- dependency (Async)
     -> UnvalidatedOrder -- input
-    -> Result ValidationError ValidatedOrder -- (Async) output
+    -> Task ValidationError ValidatedOrder -- (Async) output
 
 
 
@@ -180,11 +182,11 @@ toAddress (CheckedAddress address) =
         |> withField (toZipCode address.zipCode)
 
 
-toCheckedAddress : CheckAddressExists -> UnvalidatedAddress -> Result ValidationError CheckedAddress
+toCheckedAddress : CheckAddressExists -> UnvalidatedAddress -> Task ValidationError CheckedAddress
 toCheckedAddress checkExists address =
     address
         |> checkExists
-        |> Result.mapError toAddressError
+        |> Task.mapError toAddressError
 
 
 toProductCode : CheckProductCodeExists -> String -> Result String ProductCode
@@ -224,24 +226,31 @@ validateOrder checkCodeExists checkAddressExists input =
         shippingAddress =
             input.shippingAddress
                 |> toCheckedAddress checkAddressExists
-                |> Result.andThen toAddress
+                |> Task.andThen (toAddress >> Result.toTask)
 
         billingAddress =
             input.billingAddress
                 |> toCheckedAddress checkAddressExists
-                |> Result.andThen toAddress
+                |> Task.andThen (toAddress >> Result.toTask)
 
         orderLines =
             input.lines
                 |> List.map (toValidatedOrderLine checkCodeExists)
-                |> Utils.Result.combine
+                |> Result.combine
+
+        toValidatedOrder shipping billing =
+            apply ValidatedOrder
+                |> withField orderId
+                |> withNested customerInfo
+                |> withNested (Ok shipping)
+                |> withNested (Ok billing)
+                |> withNested orderLines
+                |> Result.toTask
     in
-    apply ValidatedOrder
-        |> withField orderId
-        |> withNested customerInfo
-        |> withNested shippingAddress
-        |> withNested billingAddress
-        |> withNested orderLines
+    Task.andThen2
+        toValidatedOrder
+        shippingAddress
+        billingAddress
 
 
 
@@ -270,7 +279,7 @@ priceOrder getProductPrice order =
         lines =
             order.lines
                 |> List.map (toPricedOrderLine getProductPrice)
-                |> Utils.Result.combine
+                |> Result.combine
 
         amountToBill =
             lines
@@ -369,23 +378,18 @@ placeOrder checkProduct checkAddress getPrice createLetter sendAcknowledgement u
     let
         validatedOrder =
             validateOrder checkProduct checkAddress unvalidatedOrder
-                |> Result.mapError Validation
+                |> Task.mapError Validation
 
         pricedOrder =
             validatedOrder
-                |> Result.andThen (priceOrder getPrice >> Result.mapError Pricing)
+                |> Task.andThen (priceOrder getPrice >> Result.toTask >> Task.mapError Pricing)
 
-        acknowledgement =
-            pricedOrder
-                |> Result.toMaybe
-                |> Maybe.andThen (acknowledgeOrder createLetter sendAcknowledgement)
+        toEvents order =
+            order
+                |> acknowledgeOrder createLetter sendAcknowledgement
+                |> createEvents order
     in
-    case pricedOrder of
-        Ok order ->
-            Ok <| createEvents order acknowledgement
-
-        Err err ->
-            Err err
+    Task.map toEvents pricedOrder
 
 
 
@@ -403,12 +407,12 @@ withString50 =
 
 withField : Result String value -> Result ValidationError (value -> b) -> Result ValidationError b
 withField x =
-    Utils.Result.andMap <| mapValidationError x
+    Result.andMap <| mapValidationError x
 
 
 withNested : Result e a -> Result e (a -> b) -> Result e b
 withNested =
-    Utils.Result.andMap
+    Result.andMap
 
 
 mapValidationError : Result String value -> Result ValidationError value

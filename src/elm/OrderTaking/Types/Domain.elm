@@ -30,6 +30,7 @@ import OrderTaking.Types.Simple
         , Price
         , ProductCode
         )
+import Task exposing (Task)
 import Utils.NonEmptyList exposing (NonEmptyList)
 
 
@@ -172,4 +173,4 @@ type RemoteServiceError
 
 
 type alias PlaceOrder =
-    UnvalidatedOrder -> Result PlaceOrderError (List PlaceOrderEvent)
+    UnvalidatedOrder -> Task PlaceOrderError (List PlaceOrderEvent)
