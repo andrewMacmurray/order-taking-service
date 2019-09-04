@@ -1,10 +1,4 @@
-module OrderTaking.Service exposing
-    ( checkAddressExists
-    , checkProductCodeExists
-    , createOrderAcknowledgementLetter
-    , getProductPrice
-    , sendOrderAcknowledgement
-    )
+module OrderTaking.Service exposing (service)
 
 import OrderTaking.Types.Simple exposing (unsafePrice__)
 import OrderTaking.Workflow
@@ -17,11 +11,23 @@ import OrderTaking.Workflow
         , HtmlString(..)
         , SendOrderAcknowledgment
         , SendResult(..)
+        , Service
         )
+import Task
 
 
 
 -- Services
+
+
+service : Service
+service =
+    { checkProductCodeExists = checkProductCodeExists
+    , checkAddressExists = checkAddressExists
+    , getProductPrice = getProductPrice
+    , createOrderAcknowledgementLetter = createOrderAcknowledgementLetter
+    , sendOrderAcknowledgement = sendOrderAcknowledgement
+    }
 
 
 checkProductCodeExists : CheckProductCodeExists
@@ -31,7 +37,7 @@ checkProductCodeExists code =
 
 checkAddressExists : CheckAddressExists
 checkAddressExists unvalidatedAddress =
-    Ok <| CheckedAddress unvalidatedAddress
+    Task.succeed <| CheckedAddress unvalidatedAddress
 
 
 getProductPrice : GetProductPrice
