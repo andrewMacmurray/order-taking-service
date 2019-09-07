@@ -1,16 +1,12 @@
 import { Resolvers, MutationResolvers } from "./generated/types";
+import * as Workflow from "./workflow";
 
 const placeOrder: MutationResolvers["placeOrder"] = (_, { order }, context) => {
-  const { orderId } = order;
   const worker = context.worker();
-  return new Promise(resolve => {
-    worker.orderSucceeded.subscribe(events =>
-      resolve({ success: true, orderId, events })
-    );
-    worker.orderFailed.subscribe(error =>
-      resolve({ success: false, orderId, error })
-    );
-    worker.orderPlaced.send(order);
+  return Workflow.process(order, {
+    onSuccess: worker.orderSucceeded,
+    onError: worker.orderFailed,
+    start: worker.orderPlaced
   });
 };
 

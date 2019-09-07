@@ -56,7 +56,7 @@ update msg model =
             ( model, OrderTaking.Context.orderProcessed result )
 
 
-processOrder : UnvalidatedOrder -> Cmd msg
+processOrder : UnvalidatedOrder -> Cmd Msg
 processOrder =
     placeOrder >> Task.attempt OrderProcessed
 

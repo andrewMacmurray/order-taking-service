@@ -98,6 +98,7 @@ encodeOrderPlaced o =
         , ( "shippingAddress", encodeAddress o.shippingAddress )
         , ( "billingAddress", encodeAddress o.billingAddress )
         , ( "amountToBill", billingAmount o.amountToBill )
+        , ( "orderLines", Encode.list encodeOrderLine o.lines )
         ]
 
 

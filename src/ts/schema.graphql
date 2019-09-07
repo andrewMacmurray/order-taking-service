@@ -7,8 +7,6 @@ type Mutation {
 }
 
 type PlaceOrderResponse {
-  orderId: String!
-  success: Boolean!
   events: [Event!]
   error: Error
 }

@@ -4,10 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "elm-typescript-interop && parcel build src/ts/server.ts --target node",
-    "dev": "elm-typescript-interop && parcel src/ts/server.ts --target node",
+    "build": "npm run gen-types && parcel build src/ts/server.ts --target node",
+    "dev": "npm run gen-types && parcel src/ts/server.ts --target node",
     "serve": "nodemon dist/server.js",
-    "gen-types": "graphql-codegen --config graphql-codegen.yml"
+    "gen-types": "graphql-codegen --config graphql-codegen.yml && elm-typescript-interop"
   },
   "author": "",
   "license": "ISC",

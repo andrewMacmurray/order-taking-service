@@ -13,8 +13,18 @@ import OrderTaking.Types.Domain
         )
 
 
+type alias Success =
+    { events : List DataTransfer.Event
+    }
 
--- Order Events
+
+type alias Error =
+    { error : DataTransfer.Error
+    }
+
+
+
+-- Order Interop
 
 
 port orderPlaced : (UnvalidatedOrder -> msg) -> Sub msg
@@ -24,17 +34,21 @@ orderProcessed : Result PlaceOrderError (List PlaceOrderEvent) -> Cmd msg
 orderProcessed result =
     case result of
         Ok events ->
-            orderSucceeded <| List.map DataTransfer.encodeEvent events
+            orderSucceeded
+                { events = List.map DataTransfer.encodeEvent events
+                }
 
         Err err ->
-            orderFailed <| DataTransfer.encodeError err
+            orderFailed
+                { error = DataTransfer.encodeError err
+                }
 
 
 
 -- Internal
 
 
-port orderSucceeded : List DataTransfer.Event -> Cmd msg
+port orderSucceeded : Success -> Cmd msg
 
 
-port orderFailed : DataTransfer.Error -> Cmd msg
+port orderFailed : Error -> Cmd msg

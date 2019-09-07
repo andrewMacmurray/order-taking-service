@@ -65,8 +65,6 @@ export type OrderLine = {
 
 export type PlaceOrderResponse = {
    __typename?: 'PlaceOrderResponse',
-  orderId: Scalars['String'],
-  success: Scalars['Boolean'],
   events?: Maybe<Array<Event>>,
   error?: Maybe<Error>,
 };
@@ -155,9 +153,9 @@ export type ResolversTypes = {
   OrderLine: OrderLine,
   Float: ResolverTypeWrapper<Scalars['Float']>,
   PlaceOrderResponse: ResolverTypeWrapper<PlaceOrderResponse>,
-  Boolean: ResolverTypeWrapper<Scalars['Boolean']>,
   Event: ResolverTypeWrapper<Event>,
   Error: ResolverTypeWrapper<Error>,
+  Boolean: ResolverTypeWrapper<Scalars['Boolean']>,
 };
 
 /** Mapping between all available schema types and the resolvers parents */
@@ -171,9 +169,9 @@ export type ResolversParentTypes = {
   OrderLine: OrderLine,
   Float: Scalars['Float'],
   PlaceOrderResponse: PlaceOrderResponse,
-  Boolean: Scalars['Boolean'],
   Event: Event,
   Error: Error,
+  Boolean: Scalars['Boolean'],
 };
 
 export type ErrorResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Error'] = ResolversParentTypes['Error']> = {
@@ -192,8 +190,6 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
 };
 
 export type PlaceOrderResponseResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PlaceOrderResponse'] = ResolversParentTypes['PlaceOrderResponse']> = {
-  orderId?: Resolver<ResolversTypes['String'], ParentType, ContextType>,
-  success?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>,
   events?: Resolver<Maybe<Array<ResolversTypes['Event']>>, ParentType, ContextType>,
   error?: Resolver<Maybe<ResolversTypes['Error']>, ParentType, ContextType>,
 };
