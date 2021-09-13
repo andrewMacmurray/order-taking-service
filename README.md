@@ -1,6 +1,6 @@
-# Domain Driven Design Example - Apollo Elm Server
+# Order Taking Service
 
-An 'Order Taking Service' adapted from an example in [Domain Modeling Made Functional](https://pragprog.com/book/swdddf/domain-modeling-made-functional)
+An 'Order Taking Service' adapted from an F# example in [Domain Modeling Made Functional](https://pragprog.com/book/swdddf/domain-modeling-made-functional) into Elm
 
 
 ## What is it?
